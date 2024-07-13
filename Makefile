@@ -17,10 +17,10 @@ ARCH_FLAGS = -march=native
 OPTIM_FLAGS = -O3 -fno-math-errno # -ffast-math
 DEBUG_FLAGS = #-g
 
-INCLUDES = -I. -I$(SCICPP_SRC)
+INCLUDES = -I. -I$(SCICPP_SRC) -I./deps -I/opt/homebrew/Cellar/boost/1.85.0/include
 
 WARNINGS = -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wpedantic
-WARNINGS += -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual
+WARNINGS += -Wcast-align -Wunused -Woverloaded-virtual
 WARNINGS += -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2
 WARNINGS += -Wfloat-equal -Wsign-promo -Wdisabled-optimization #-Weffc++
 
@@ -36,13 +36,13 @@ else
 #   WARNINGS += -Weverything -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-documentation-unknown-command -Wno-newline-eof -ferror-limit=200
 endif
 
-CFLAGS += -Werror $(WARNINGS) $(ARCH_FLAGS) $(OPTIM_FLAGS) $(DEBUG_FLAGS) $(INCLUDES) -MMD -MP
+CFLAGS += $(WARNINGS) $(ARCH_FLAGS) $(OPTIM_FLAGS) $(DEBUG_FLAGS) $(INCLUDES) -MMD -MP
 CXXFLAGS = $(CFLAGS) -std=c++17 -pthread
-LD_FLAGS = -lm -lstdc++fs
+LD_FLAGS = -lm # -lstdc++fs
 
 ifeq ($(COMPILER),clang)
   # CXXFLAGS += -stdlib=libc++ # No C++17 deduction guides for now
-  LD_FLAGS += -fuse-ld=gold -lstdc++
+  LD_FLAGS += -lstdc++
 endif
 
 all: test

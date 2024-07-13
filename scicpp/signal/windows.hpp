@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <boost/math/special_functions/bessel.hpp>
 #include <numeric>
 #include <vector>
 
@@ -355,11 +356,11 @@ void kaiser_filler(Array &w, T beta) {
     scicpp_require(beta >= T{0});
 
     const auto alpha = 0.5 * T(w.size() - 1);
-    const auto i0_beta = std::cyl_bessel_i(0, beta);
+    const auto i0_beta = boost::math::cyl_bessel_i(0, beta);
 
     symmetric_filler(w, [=](std::size_t i) {
         const auto r = (T(i) - alpha) / alpha;
-        return std::cyl_bessel_i(0, beta * std::sqrt(T{1} - r * r)) / i0_beta;
+        return boost::math::cyl_bessel_i(0, beta * std::sqrt(T{1} - r * r)) / i0_beta;
     });
 }
 

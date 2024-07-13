@@ -394,6 +394,16 @@ auto cumacc(Array &&a, BinaryOp op, UnaryPredicate p) {
     return a_filt;
 }
 
+//---------------------------------------------------------------------------------
+// atleast_1d
+//---------------------------------------------------------------------------------
+
+template <typename T>
+auto atleast_1d(T a) {
+    std::vector<T> res({a});
+    return res;
+}
+
 } // namespace scicpp
 
 #endif // SCICPP_CORE_FUNCTIONAL

@@ -1463,7 +1463,11 @@ bool isDebuggerActive();
 
 #ifdef CATCH_PLATFORM_MAC
 
+#ifdef __APPLE__
+#define CATCH_TRAP() asm(".inst 0xd4200000")
+#else
 #define CATCH_TRAP() __asm__("int $3\n" : :) /* NOLINT */
+#endif
 
 #elif defined(CATCH_PLATFORM_LINUX)
 // If we can use inline assembler, do it because this allows us to break
