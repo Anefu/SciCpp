@@ -53,9 +53,7 @@ namespace scicpp {
 
             SECTION("Lowpass Filter with N = 2, Wn = 0.5") {
                 const bool analog = false;
-                const auto result = butter<LOWPASS, BA, double>(N, Wn);
-
-                scicpp::print(result.a);
+                const auto result = butter<BTYPE::LOWPASS, FOUTPUT::BA, double>(N, Wn);
 
                 REQUIRE(almost_equal<100000000>(result.b, {0.29289322, 0.58578644, 0.29289322}));
                 REQUIRE(almost_equal<100000000>(result.a, {1.00000000e+00, -1.84036951e-16,  1.71572875e-01}));

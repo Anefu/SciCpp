@@ -34,4 +34,6 @@ using namespace std::literals;
 // #include "scicpp/signal/spectral.t.cpp"
 // #include "scicpp/signal/waveforms.t.cpp"
 // #include "scicpp/signal/windows.t.cpp"
-#include "scicpp/signal/filter_design.t.cpp"
+// #include "scicpp/signal/filter_design.t.cpp"
+#include "scicpp/signal/arraytools.t.cpp"
+#include "scicpp/signal/signaltools.t.cpp"

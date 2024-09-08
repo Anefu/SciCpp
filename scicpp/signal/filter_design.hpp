@@ -14,9 +14,9 @@
 #include <complex>
 
 namespace scicpp::signal {
-    enum BTYPE : int { LOWPASS, HIGHPASS, BANDPASS, BANDSTOP };
-    enum FTYPE : int { BUTTER };
-    enum OUTPUT : int { BA, ZPK, SOS };
+    enum class BTYPE : int { LOWPASS, HIGHPASS, BANDPASS, BANDSTOP };
+    enum class FTYPE : int { BUTTER };
+    enum class FOUTPUT : int { BA, ZPK, SOS };
 
     struct ZPK {
         std::vector<std::complex<double>> z;
@@ -55,18 +55,19 @@ namespace scicpp::signal {
         }
 
         auto bilinear_zpk(const struct ZPK& zpk, double fs) {
-            double degree = static_cast<double>(_relative_degree(zpk.z.size(), zpk.p.size()));
+            using namespace scicpp::operators;
+            std::size_t degree = _relative_degree(zpk.z.size(), zpk.p.size());
 
             double fs2 = 2.0 * fs;
 
             std::vector<std::complex<double>> z_z = map([=](auto x) { return ( fs2 + x )/( fs2 - x ); }, zpk.z);
             std::vector<std::complex<double>> p_z = map([=](auto x) { return ( fs2 + x )/( fs2 - x ); }, zpk.p);
 
-            std::vector<double> neg_ones = map([=](auto x) { return -x; }, ones<double>(static_cast<size_t>(degree)));
+            std::vector<double> neg_ones = -1.0 * ones<double>(degree);
             z_z.insert(z_z.end(), neg_ones.begin(), neg_ones.end());
 
-            std::vector<std::complex<double>> fs2_z = map([=](auto x) { return fs2 - x; }, zpk.z);
-            std::vector<std::complex<double>> fs2_p = map([=](auto x) { return fs2 - x; }, zpk.p);
+            std::vector<std::complex<double>> fs2_z = fs2 - zpk.z;
+            std::vector<std::complex<double>> fs2_p = fs2 - zpk.p;
 
             double k_z = zpk.k * real(prod(fs2_z)/prod(fs2_p));
 
@@ -76,10 +77,12 @@ namespace scicpp::signal {
         }
 
         auto lp2lp_zpk(const struct ZPK& zpk, double wo = 1.0) {
+            using namespace scicpp::operators;
+
             std::size_t degree = _relative_degree(zpk.z.size(), zpk.p.size());
 
-            std::vector<std::complex<double>> z_lp = map([=](auto x) { return wo * x; }, zpk.z);
-            std::vector<std::complex<double>> p_lp = map([=](auto x) { return wo * x; }, zpk.p);
+            std::vector<std::complex<double>> z_lp = wo * zpk.z;
+            std::vector<std::complex<double>> p_lp = wo * zpk.p;
 
             double k_lp = zpk.k * std::pow(wo, static_cast<double>(degree));
 
@@ -118,7 +121,7 @@ namespace scicpp::signal {
             return ba;
         }
 
-        template <typename T, FTYPE ftype = BUTTER, BTYPE btype = LOWPASS, OUTPUT output = BA>
+        template <typename T, FTYPE ftype = FTYPE::BUTTER, BTYPE btype = BTYPE::LOWPASS, FOUTPUT output = FOUTPUT::BA>
         auto iirfilter(int N, double Wn, std::optional<double> rp = std::nullopt,
                        std::optional<double> rs = std::nullopt, bool analog = false, std::optional<double> fs = std::nullopt) {
             double warped;
@@ -133,7 +136,7 @@ namespace scicpp::signal {
                 Wn = 2 * Wn / fs.value();
             }
 
-            if (ftype == BUTTER) {
+            if (ftype == FTYPE::BUTTER) {
                 zpk = buttap(N);
             } //elif besselap...
 
@@ -145,9 +148,9 @@ namespace scicpp::signal {
                 warped = Wn;
             }
 
-            if (btype == LOWPASS || btype == HIGHPASS) {
+            if (btype == BTYPE::LOWPASS || btype == BTYPE::HIGHPASS) {
                 // check size(Wn) == 1
-                if (btype == LOWPASS) {
+                if (btype == BTYPE::LOWPASS) {
                     zpk = lp2lp_zpk(zpk, warped);
                 }
             }
@@ -169,9 +172,9 @@ namespace scicpp::signal {
         }
     }
 
-    template <BTYPE btype = LOWPASS, OUTPUT output = BA, typename T>
+    template <BTYPE btype = BTYPE::LOWPASS, FOUTPUT output = FOUTPUT::BA, typename T>
     auto butter(int N, double Wn, bool analog = false, std::optional<double> fs = std::nullopt) {
-        return detail::iirfilter<T, BUTTER, btype, output>(N, Wn, -1, -1, analog, fs);
+        return detail::iirfilter<T, FTYPE::BUTTER, btype, output>(N, Wn, -1, -1, analog, fs);
     }
 } // namespace scicpp::signal
 

@@ -1,0 +1,190 @@
+#ifndef SCICPP_SIGNAL_SIGNALTOOLS
+#define SCICPP_SIGNAL_SIGNALTOOLS
+
+#include "scicpp/polynomials/polynomial.hpp"
+#include "scicpp/core/macros.hpp"
+#include "scicpp/linalg/solve.hpp"
+#include "scicpp/core/maths.hpp"
+#include "scicpp/core/meta.hpp"
+#include "scicpp/core/numeric.hpp"
+#include "scicpp/core/utils.hpp"
+#include "scicpp/core/range.hpp"
+#include "scicpp/core/constants.hpp"
+#include "scicpp/core/units/units.hpp"
+#include "scicpp/signal/arraytools.hpp"
+#include "scicpp/signal/filter_design.hpp"
+#include <vector>
+#include <complex>
+
+namespace scicpp::signal {
+    enum class PADTYPE : int { EVEN, ODD, CONSTANT, NONE };
+    namespace detail {
+        template <typename T, PADTYPE padtype>
+        auto _validate_pad(const std::vector<T>& x, int axis, int ntaps, int padlen = -1) {
+
+            std::vector<T> ext;
+
+            if (padtype == PADTYPE::NONE) padlen = 0;
+
+            int edge = padlen == -1 ? ntaps * 3 : padlen;
+
+            if (x.size() <= edge) throw std::invalid_argument("Analog filters do not use sampling frequency."); // may not be appr exp. assumes x is 1D
+
+            if ((padtype != PADTYPE::NONE) && (edge > 0)) {
+                if (padtype == PADTYPE::EVEN);
+                else if (padtype == PADTYPE::ODD) ext = odd_ext<T>(x, edge);
+            } else {
+                  ext = x;
+            }
+
+            return std::make_tuple(ext, edge);
+        }
+        template <typename T> // tentative
+        auto companion(const std::vector<T>& a) {
+            auto result = detail::eye<T>(a.size() - 1, 0, -1);
+            auto sliced_a = detail::slice(a, 1, a.size());
+            result.at(0) = -sliced_a / a[0];
+            return result;
+        }
+        template <typename T>
+        void filt(std::vector<T>& b, std::vector<T>& a, const std::vector<T>& x, std::vector<T>& y, 
+            std::vector<T>& Z)
+        {
+            size_t len_b = b.size();
+            size_t len_x = x.size();
+
+            // Normalize the filter coefficients
+            T a0 = a[0];
+            for (size_t n = 0; n < len_b; ++n) {
+                b[n] /= a0;
+                a[n] /= a0;
+            }
+
+            for (size_t k = 0; k < len_x; k++) {
+                if (len_b > 1) {
+                    y[k] = Z[0] + b[0] * x[k];  // Calculate first delay (output)
+
+                    // Fill in middle delays
+                    for (size_t n = 0; n < len_b - 2; n++) {
+                        Z[n] = Z[n+1] + x[k] * b[n+1] - y[k] * a[n+1];
+                    }
+
+                    // Calculate last delay
+                    Z[len_b-2] = x[k] * b[len_b-1] - y[k] * a[len_b-1];
+                } else {
+                    y[k] = x[k] * b[0];
+                }
+            }
+        }
+
+        template<typename T>
+        void zfill(const std::vector<T>& src, std::vector<T>& dst, size_t n) {
+            dst.assign(n, T(0));
+            std::copy_n(src.begin(), std::min(src.size(), n), dst.begin());
+        }
+
+        template<typename T>
+        auto _raw_filter(std::vector<T>& b, std::vector<T>& a, const std::vector<T>& x, const std::vector<T>& zi)
+        {
+            size_t nfilt = std::max(a.size(), b.size());
+            
+            std::vector<T> azfilled(nfilt);
+            std::vector<T> bzfilled(nfilt);
+            std::vector<T> y(x.size(), 0.0);
+            
+            zfill(a, azfilled, nfilt);
+            zfill(b, bzfilled, nfilt);
+
+            std::vector<T> zfzfilled;
+
+            if (!zi.empty()) {
+                zfzfilled = zi;
+            } else {
+                zfzfilled.assign(nfilt - 1, T(0));
+            }
+
+            filt(bzfilled, azfilled, x, y, zfzfilled);
+
+            return std::make_tuple(y, zfzfilled);
+        }
+        // template <typename T>
+        // auto _linear_filter(const std::vector<T>& b, const std::vector<T>& a, const std::vector<T>& x,
+        //     std::vector<T> Vi, int axis = 0)
+        // {
+        //     size_t na, nb, zi_size;
+        //     int input_flag = 0;
+
+        //     if (a[0] == T{0}) throw std::invalid_argument("a[0] is 0.0");
+
+        //     na = a.size();
+        //     nb = b.size();
+
+        //     zi_size = std::max(na, nb) - 1;
+
+        //     std::vector<T> Vf(zi_size);
+
+        //     return _raw_filter(b, a, x, Vi);
+        // }
+    }
+    template <typename T>
+    auto lfilter_zi(std::vector<T> b, std::vector<T> a) {
+
+        using namespace scicpp::linalg;
+        using namespace scicpp::operators;
+        using namespace scicpp::polynomial;
+
+        while ((a.size() > 1) && (a[0] == 0.0)) {
+            a = axis_slice<T>(a, 1, a.size()); // we know BA only contains vector<double>'s
+        }
+        if (a.size() < 1) throw std::invalid_argument("There must be at least one nonzero `a` coefficient.");
+        if (a[0] != 1.0) {
+            b = b / a[0];
+            a = a / a[0];
+        }
+        std::size_t n = std::max(a.size(), b.size());
+
+        if (a.size() < n)
+            a = detail::concatenate<T>(a, zeros<double>(n - a.size()));
+        else if (b.size() < n)
+            b = detail::concatenate<T>(b, zeros<double>(n - b.size()));
+
+        auto comp_a = detail::companion(a);
+
+        // transpose comp_a in place
+        for (int i = 0; i < comp_a.size(); i++)
+            for (int j = i + 1; j < comp_a.size(); j++)
+                std::swap(comp_a[i][j], comp_a[j][i]);
+
+        auto eye_n = detail::eye<T>(n - 1);
+        std::vector<std::vector<T>> IminusA;
+
+        for(int i = 0; i < comp_a.size(); i++)
+            IminusA.push_back(eye_n[i] - comp_a[i]);
+
+        Eigen::MatrixXd emi(IminusA.size(), IminusA.size());
+        for (int i = 0; i < IminusA.size(); i++)
+            for (int j = 0; j < IminusA.size(); j++)
+                emi(i, j) = IminusA[i][j];
+
+        auto B = detail::slice<T>(b, 1, b.size()) - (detail::slice(a, 1, a.size()) * b[0]);
+
+        // Solve zi = A*zi + B
+        auto zi = lstsq(emi, B);
+
+        return zi;
+    }
+    // template <typename T>
+    // auto lfilter(std::vector<T>& b, std::vector<T>& a, std::vector<T>& x, int axis = -1,
+    //     std::optional<std::vector<T>> zi = std::nullopt) {
+    //     if (a.size() == 1) {
+    //         if (zi) {
+    //             auto zi = zi.value();
+    //             if (zi.size() != b.size() - 1) {
+                    
+    //             }
+    //         }
+    //     }
+    // }
+}
+
+#endif
