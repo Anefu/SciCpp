@@ -24,11 +24,11 @@ namespace scicpp::signal {
             std::vector<T> result;
             int n = static_cast<int>(arr.size());
 
+            start = start < 0 ? n + start : start;
+            stop = stop < 0 ? n + stop : stop;
+
             int left = min(start, stop);
             int right = max(start, stop);
-
-            left = left < 0 ? n + left : left;
-            right = right < 0 ? n + right : right;
 
             if (left < 0) left = -1;
             if (right > n) right = n;

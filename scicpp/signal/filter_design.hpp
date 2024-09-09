@@ -76,19 +76,15 @@ namespace scicpp::signal {
             return zpk_z;
         }
 
-        auto lp2lp_zpk(const struct ZPK& zpk, double wo = 1.0) {
+        void lp2lp_zpk(struct ZPK& zpk, double wo = 1.0) {
             using namespace scicpp::operators;
 
             std::size_t degree = _relative_degree(zpk.z.size(), zpk.p.size());
 
-            std::vector<std::complex<double>> z_lp = wo * zpk.z;
-            std::vector<std::complex<double>> p_lp = wo * zpk.p;
+            zpk.z = wo * zpk.z;
+            zpk.p = wo * zpk.p;
 
-            double k_lp = zpk.k * std::pow(wo, static_cast<double>(degree));
-
-            struct ZPK zpk_lp = { z_lp, p_lp, k_lp };
-
-            return zpk_lp;
+            zpk.k = zpk.k * std::pow(wo, static_cast<double>(degree));
         }
 
         auto zpk2tf(const struct ZPK& zpk) {
@@ -151,7 +147,7 @@ namespace scicpp::signal {
             if (btype == BTYPE::LOWPASS || btype == BTYPE::HIGHPASS) {
                 // check size(Wn) == 1
                 if (btype == BTYPE::LOWPASS) {
-                    zpk = lp2lp_zpk(zpk, warped);
+                    lp2lp_zpk(zpk, warped);
                 }
             }
 

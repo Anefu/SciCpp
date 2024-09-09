@@ -2,6 +2,7 @@
 #define SCICPP_SIGNAL_SIGNALTOOLS
 
 #include "scicpp/polynomials/polynomial.hpp"
+#include "convolve.hpp"
 #include "scicpp/core/macros.hpp"
 #include "scicpp/linalg/solve.hpp"
 #include "scicpp/core/maths.hpp"
@@ -18,6 +19,7 @@
 
 namespace scicpp::signal {
     enum class PADTYPE : int { EVEN, ODD, CONSTANT, NONE };
+    enum class METHOD : int { PAD, GUST };
     namespace detail {
         template <typename T, PADTYPE padtype>
         auto _validate_pad(const std::vector<T>& x, int axis, int ntaps, int padlen = -1) {
@@ -50,15 +52,14 @@ namespace scicpp::signal {
         void filt(std::vector<T>& b, std::vector<T>& a, const std::vector<T>& x, std::vector<T>& y, 
             std::vector<T>& Z)
         {
+            using namespace scicpp::operators;
             size_t len_b = b.size();
             size_t len_x = x.size();
 
             // Normalize the filter coefficients
             T a0 = a[0];
-            for (size_t n = 0; n < len_b; ++n) {
-                b[n] /= a0;
-                a[n] /= a0;
-            }
+            b = b / a0;
+            a = a / a0;
 
             for (size_t k = 0; k < len_x; k++) {
                 if (len_b > 1) {
@@ -173,18 +174,49 @@ namespace scicpp::signal {
 
         return zi;
     }
-    // template <typename T>
-    // auto lfilter(std::vector<T>& b, std::vector<T>& a, std::vector<T>& x, int axis = -1,
-    //     std::optional<std::vector<T>> zi = std::nullopt) {
-    //     if (a.size() == 1) {
-    //         if (zi) {
-    //             auto zi = zi.value();
-    //             if (zi.size() != b.size() - 1) {
-                    
-    //             }
-    //         }
-    //     }
-    // }
+    template <typename T>
+    auto lfilter(std::vector<T>& b, std::vector<T>& a, std::vector<T>& x, std::vector<T> zi, int axis = 0) {
+        // check a == 1
+        // using namespace scicpp::operators;
+        // if (a.size() == 1) {
+        //     b = b / a[0];
+        //     auto out_full = map([=](auto k) { return convolve(b, k); }, x);
+        // } else {
+        // }
+        return detail::_raw_filter(b, a, x, zi);
+    }
+    template <typename T, PADTYPE ptype = PADTYPE::ODD, METHOD method = METHOD::PAD>
+    auto filtfilt(std::vector<T>& b, std::vector<T>& a, std::vector<T>& x, int axis = 0,
+    int padlen = -1, std::optional<int> irlen = std::nullopt)
+    {
+        using namespace scicpp::operators;
+        if (method == METHOD::GUST);
+        auto [ext, edge] = detail::_validate_pad<T, ptype>(x, 0, std::max(a.size(), b.size()), padlen);
+        const auto zi = lfilter_zi(b, a);
+
+        T x0 = ext[0];
+
+        // Forward filter.
+        auto [y, zf] = lfilter(b, a, ext, zi * x0);
+
+        // Backward filter.
+        // Create y0 so zi*y0 broadcasts appropriately.
+        T y0 = y[y.size() - 1];
+        auto y_rev = utils::set_array(y);
+        
+        std::reverse_copy(y.begin(), y.end(), y_rev.begin());
+
+        auto [y_new, zf_new] = lfilter(b, a, y_rev, zi * y0);
+
+        // Reverse y.
+        std::reverse(y_new.begin(), y_new.end());
+
+        if (edge > 0)
+            // Slice the actual signal from the extended signal.
+            y_new = axis_slice(y_new, edge, -edge);
+
+        return y_new;
+    }
 }
 
 #endif

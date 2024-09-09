@@ -40,6 +40,12 @@ namespace scicpp {
                 const auto result = detail::slice(arr, -2, -5, -1);
                 REQUIRE(almost_equal<1>(result, { 6, 5, 4 }));
             }
+            SECTION("Slice 8") {
+                const auto result = detail::slice(arr, 2, -2, 1);
+                std::cout << "Slice result: ";
+                scicpp::print(result);
+                REQUIRE(almost_equal<1>(result, { 3, 4, 5 }));
+            }
             SECTION("Eye 0") {
                 const auto result = detail::eye<int>(3, 0, -1);
                 REQUIRE(almost_equal<1>(result, { {0, 0, 0}, {1, 0, 0}, {0, 1, 0} }));

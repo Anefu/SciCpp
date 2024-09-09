@@ -24,27 +24,28 @@ namespace scicpp {
 
             SECTION("LP2LP ZPK") {
 
-                const auto zpk = detail::buttap(N);
+                auto zpk = detail::buttap(N);
                 double warped = 2 * 2.0 * scicpp::tan(units::radian<double>(pi<double> * Wn / 2.0));
 
-                const auto result = detail::lp2lp_zpk(zpk, warped);
+                // const auto result = detail::lp2lp_zpk(zpk, warped);
+                detail::lp2lp_zpk(zpk, warped);
 
-                REQUIRE(result.z.empty());
-                REQUIRE(almost_equal<100000000>(result.p, {-2.82842712+2.82842712i, -2.82842712-2.82842712i}));
-                REQUIRE(almost_equal<1>(result.k, 15.999999999999996));
+                REQUIRE(zpk.z.empty());
+                REQUIRE(almost_equal<100000000>(zpk.p, {-2.82842712+2.82842712i, -2.82842712-2.82842712i}));
+                REQUIRE(almost_equal<1>(zpk.k, 15.999999999999996));
             }
 
             SECTION("Bilinear ZPK") {
 
-                const auto zpk_b = detail::buttap(N);
+                auto zpk_b = detail::buttap(N);
                 double warped = 2 * 2.0 * scicpp::tan(units::radian<double>(pi<double> * Wn / 2.0));
 
-                const auto zpk_l = detail::lp2lp_zpk(zpk_b, warped);
+                // const auto zpk_l = detail::lp2lp_zpk(zpk_b, warped);
+                detail::lp2lp_zpk(zpk_b, warped);
 
-                const auto result = detail::bilinear_zpk(zpk_l, 2.0);
+                const auto result = detail::bilinear_zpk(zpk_b, 2.0);
 
-                scicpp::print(polynomial::polyfromroots(result.p).data());
-                scicpp::print(result.p);
+                scicpp::print(zpk_b.p);
 
                 REQUIRE(almost_equal<1>(result.z, {-1., -1.}));
                 REQUIRE(almost_equal<100000000>(result.p, {9.20184753e-17+0.41421356i, 9.20184753e-17-0.41421356i}));
