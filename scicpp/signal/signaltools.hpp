@@ -192,6 +192,7 @@ namespace scicpp::signal {
         using namespace scicpp::operators;
         if (method == METHOD::GUST);
         auto [ext, edge] = detail::_validate_pad<T, ptype>(x, 0, std::max(a.size(), b.size()), padlen);
+        
         const auto zi = lfilter_zi(b, a);
 
         T x0 = ext[0];
@@ -203,7 +204,7 @@ namespace scicpp::signal {
         // Create y0 so zi*y0 broadcasts appropriately.
         T y0 = y[y.size() - 1];
         auto y_rev = utils::set_array(y);
-        
+
         std::reverse_copy(y.begin(), y.end(), y_rev.begin());
 
         auto [y_new, zf_new] = lfilter(b, a, y_rev, zi * y0);

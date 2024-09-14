@@ -9,5 +9,6 @@
 #include "signal/spectral.hpp"
 #include "signal/waveforms.hpp"
 #include "signal/windows.hpp"
+#include "signal/signaltools.hpp"
 
 #endif // SCICPP_SIGNAL_HEADER
